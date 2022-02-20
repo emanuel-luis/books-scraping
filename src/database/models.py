@@ -1,3 +1,4 @@
+from alive_progress import alive_it
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, Float, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
@@ -28,21 +29,32 @@ class Book(Base, Table):
     def handler(cls, *objects: dict):
         query = cls.to_tuple()
         objects_to_create = []
+        objects_to_update = []
 
         for obj in objects:
-            category = obj.get('category')
+            category = obj['category']
             del obj['category']
 
-            category_id = obj['category_id'] = Category.mapping[category]
-            name = obj.get('name')
-            if (name, category_id) in query:
-                cls.update(where=dict(name=name, category_id=category_id),
-                           **obj)
+            c_id = obj['category_id'] = Category.mapping[category]
+            name = obj['name']
+
+            if (name, c_id) in query:
+                objects_to_update.append(obj)
             else:
                 objects_to_create.append(obj)
 
         if objects_to_create:
             cls.create(*objects_to_create)
+
+        if objects_to_update:
+            t = f'[DATABASE] Updating {len(objects)} object(s) ' \
+                f'from {cls.__tablename__} table...'
+
+            for obj in alive_it(objects_to_update, title=t):
+                w = {'name': obj['name'],
+                     'category_id': obj['category_id']}
+
+                cls.update(where=w, **obj)
 
     @classmethod
     def to_tuple(cls):

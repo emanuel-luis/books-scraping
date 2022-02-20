@@ -68,7 +68,7 @@ class Scrapper:
         category = c.strip('\n')
 
         price_color = float(soup.find(class_='price_color').text[1:])
-        price = round(price_color, 2)
+        price = round(price_color * self.eur_currency, 2)
 
         instock = soup.find(class_='instock availability').text
         stock = int(re.sub('\D', '', instock))
@@ -104,7 +104,7 @@ class Scrapper:
         for item in alive_it(categories_a, title='[WEBSCRAPPING] Getting categories data...'):
             categories.append(item.text)
 
-        print('\n')
+        print()
         categories.sort()
 
         return [{'name': category} for category in categories]
@@ -137,7 +137,6 @@ class Scrapper:
             for book in alive_it(self, 1000, title='[WEBSCRAPPING] Getting books data...'):
                 books.append(book)
             
-            print('\n')
         except Exception as e:
             print(e)
         finally:

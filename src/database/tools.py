@@ -35,8 +35,6 @@ class Table:
 
             session.add(new_object)
 
-        print('\n')
-
     @classmethod
     def read(cls, *, where: dict = {}):
         query = session.query(cls)
@@ -51,19 +49,14 @@ class Table:
     def update(cls, *, where: dict, **kwargs) -> None:
         objects = cls.read(where=where)
 
-        t = f'[DATABASE] Updating {len(objects)} object(s) ' \
-            f'from {cls.__tablename__} table...'
-
         if not objects:
             print('[LOG] Tried to update a non-existent'
                   f'row from {cls.__tablename__}')
             return
 
-        for obj in alive_it(objects, title=t):
+        for obj in objects:
             for key, value in kwargs.items():
                 setattr(obj, key, value)
-
-        print('\n')
 
     @classmethod
     @commit
@@ -74,5 +67,3 @@ class Table:
             f'from {cls.__tablename__} table...'
         for obj in alive_it(objects, title=t):
             session.delete(obj)
-
-        print('\n')
