@@ -1,25 +1,30 @@
 # Projeto de Engenharia de Dados
-Um projeto básico de engenharia de dados com **BS4** e **Selenium** e manipulação de dados com **SQLAlchemy**, onde o objetivo é fazer webscrapping do [Books to Scrape](http://books.toscrape.com/) e guardar os resultados em um banco de dados, o projeto foi feito nas seguintes etapas:
-- Criar um banco de dados com a tabela Books contendo 5 atributos de um livro:
-    1. nome
-    2. categoria
-    3. preço
-    4. estoque
-    5. avaliação
-- Raspar os dados do [Books to Scrape](http://books.toscrape.com/), onde o navegador deverá ir pra cada link de livro, fazer a raspagem, e ao final da página ir pra próxima, caso exista.
+Um projeto básico de engenharia de dados com **BS4** e **Selenium** e manipulação de dados com **SQLAlchemy**, onde o objetivo é fazer webscrapping do [Books to Scrape](http://books.toscrape.com/) e guardar os resultados em um banco de dados.
+
+## Objetivo
+Criar um banco de dados com a tabela Books contendo 5 atributos que representarão um livro:
+
+* `Nome`
+* `Categoria`
+* `Preço`
+* `Estoque`
+* `Avaliação`
+
+> a descrição foi adicionada como um bonus, bem como a tabela `Category`!
+
+Depois de modelado o banco de dados, raspar os dados referente aos livros hospedados no site `Books to Scrape`, onde deverá ser usado `Selenium` e `BeautifulSoup4`. O *selenium* será responsável por navegar entres as páginas e adentrar o link para cada livro, quanto ao *bs4* será essencial para a raspagem!
 
 ## Banco de Dados
-Inicialmente estou usando **SQLite**, mas pretendo dar um upgrade pra um outro mais utilizado de mercado, fiz com esse banco porque ainda estou aprendendo a manipular o **SQLAlchemy**.
+O banco de dados foi modelado usando a biblioteca `SQLAlchemy`, sendo o banco `SQLite` (talvez eu faça um upgrade pra colocar algum mais utilizado em mercado).
 
-## WebScrapping
-Foi usado o **Selenium** para navegar, e renderizar, entre as páginas, inicialmente usei o *ChromeDriver*, mas o modo `--headless` dele não renderizava, então tive que optar pelo *GeckoDriver*, que teve alguns problemas relacionado à renderização, como não clicar nos links e enviar HTML vazios pra transformação do HTML pra livro, e então usar o **BeautifulSoup4** pra raspar os dados do HTML, o que foi um pouco complicado em alguns atributos como o *rating*, mas no fim deu tudo certo.
+## Scrapping
+O `Selenium` foi usado como ferramenta para navegar e renderizar as páginas, inicialmente foi usado o `ChromeDriver`, mas o modo `--headless` não renderizava as páginas por conta do *JavaScript*, então optei pelo `GeckoDriver`, onde tive que refatorar boa parte do código, quanto aos clique para entrar na página do livro. O `BS4` foi usado para raspagem do HTML obtido através do selenium.
 
-# TODO
-- Reescrever o código e deixar ele mais limpo
-- Usar um banco de dados diferente
-- Melhorar o módulo de scrapping, por exemplo melhorar a performance de tempo
-- Usar conceitos de relação de banco de dados, para livros e categorias, sendo categorias uma nova tabela (tentei isso, mas sem sucesso)
-- Melhorar a modularização
-- Acrescentar rotinar diária do arquivo, pra ele fazer o scrapping diáriamente
-- Remover o log do *geckodriver* (relativamente fácil)
-- Melhorar o CRUD
+
+## `TODO`
+```
+- Refatorar o código mais um pouco, acho que deve ter algumas partes desnecessárias;
+- Migrar pra outro banco de dados;
+- Melhorar a perfomance do scrapping;
+- Organizar os módulos e pastas do projeto;
+```
