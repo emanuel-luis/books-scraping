@@ -27,34 +27,34 @@ class Book(Base, Table):
 
     @classmethod
     def handler(cls, *objects: dict):
-        query = cls.to_tuple()
-        objects_to_create = []
-        objects_to_update = []
-
-        for obj in objects:
+        def set_category_id(obj:dict):
             category = obj['category']
             del obj['category']
+            obj.setdefault('category_id', Category.mapping[category])
 
-            c_id = obj['category_id'] = Category.mapping[category]
-            name = obj['name']
+            return obj
 
-            if (name, c_id) in query:
-                objects_to_update.append(obj)
-            else:
-                objects_to_create.append(obj)
+        query = cls.to_tuple()
+        to_create = []
+        to_update = []
 
-        if objects_to_create:
-            cls.create(*objects_to_create)
+        for obj in map(set_category_id, objects):
+            _list = (to_update
+                     if (obj['name'], obj['category_id']) in query
+                     else to_create)
 
-        if objects_to_update:
-            t = f'[DATABASE] Updating {len(objects)} object(s) ' \
-                f'from {cls.__tablename__} table...'
+            _list.append(obj)
 
-            for obj in alive_it(objects_to_update, title=t):
-                w = {'name': obj['name'],
-                     'category_id': obj['category_id']}
+        cls.create(*to_create)
 
-                cls.update(where=w, **obj)
+        t = f'Updating {len(objects)} object(s) ' \
+            f'from {cls.__tablename__} table...'
+
+        for obj in alive_it(to_update, title=t):
+            w = {'name': obj['name'],
+                 'category_id': obj['category_id']}
+
+            cls.update(where=w, **obj)
 
     @classmethod
     def to_tuple(cls):

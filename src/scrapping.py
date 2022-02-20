@@ -101,10 +101,9 @@ class Scrapper:
         categories_a = categories_ul.find_elements(By.TAG_NAME, 'a')
 
         categories = []
-        for item in alive_it(categories_a, title='[WEBSCRAPPING] Getting categories data...'):
+        for item in alive_it(categories_a, title='Getting categories data...'):
             categories.append(item.text)
 
-        print()
         categories.sort()
 
         return [{'name': category} for category in categories]
@@ -134,7 +133,7 @@ class Scrapper:
         books = []
 
         try:
-            for book in alive_it(self, 1000, title='[WEBSCRAPPING] Getting books data...'):
+            for book in alive_it(self, 1000, title='Getting books data...'):
                 books.append(book)
             
         except Exception as e:
