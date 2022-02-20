@@ -1,3 +1,6 @@
-from .crud import *
+from .models import Book, Category, Base
+from .tools import engine
 
-__all__ = ['create', 'read', 'update', 'delete']
+Base.metadata.create_all(engine)
+
+__all__ = ['Book', 'Category']

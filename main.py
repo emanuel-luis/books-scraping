@@ -13,3 +13,9 @@ with alive_bar(1000) as bar:
             # db.update(where=w, **book)
         
         bar()
+
+def main():
+    
+    pass
+if __name__ == '__main__':
+    main()
