@@ -27,7 +27,7 @@ class Book(Base, Table):
     @classmethod
     def handler(cls, *objects: dict):
         query = cls.to_tuple()
-        to_create = []
+        objects_to_create = []
 
         for obj in objects:
             category = obj.get('category')
@@ -36,13 +36,14 @@ class Book(Base, Table):
             category_id = obj['category_id'] = Category.mapping[category]
             name = obj.get('name')
 
-            if (name, category_id) in query:
+            if (name, category) in query:
                 cls.update(where=dict(name=name, category_id=category_id),
                            **obj)
             else:
-                to_create.append(obj)
+                objects_to_create.append(obj)
 
-        cls.create(*to_create)
+        if objects_to_create:
+            cls.create(*objects_to_create)
 
     @classmethod
     def to_tuple(cls):
@@ -62,15 +63,21 @@ class Category(Base, Table):
     @classmethod
     def handler(cls, *objects):
         query = cls.to_list()
-        cls.create(*filter(lambda o: o['name'] not in query, objects))
+
+        objects_to_create = []
+        for obj in objects:
+            if obj['name'] not in query:
+                objects_to_create.append(obj)
+
+        if objects_to_create:
+            cls.create(*objects_to_create)
 
     @classmethod
     def to_list(cls):
-        return [category.name 
-                for category in cls.query or cls.read()]
+        return [category.name for category in cls.read()]
 
     @classmethod
     @property
     def mapping(cls):
-        return {category.name: category.id 
-                for category in cls.query or cls.read()}
+        return {category.name: category.id
+                for category in cls.read()}

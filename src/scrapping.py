@@ -1,9 +1,9 @@
 from selenium.webdriver.support import expected_conditions as EC
 from typing import Generator
+from alive_progress import alive_it
 from selenium.webdriver import Firefox, FirefoxOptions
 from selenium.webdriver.firefox.service import Service
 from bs4 import BeautifulSoup
-from selenium.webdriver.firefox.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -19,12 +19,9 @@ def _is_text(string: str) -> bool:
 class Scrapper:
     def __init__(self, headless=True) -> None:
         options = FirefoxOptions()
-        if headless:
-            options.add_argument('--headless')
-
+        options.headless = headless
         service = Service(r'C:\bin\geckodriver.exe', log_path='nul')
         driver = Firefox(options=options, service=service)
-
         driver.get('https://books.toscrape.com/')
 
         self.driver = driver
@@ -32,14 +29,9 @@ class Scrapper:
         self.has_next_page = True
         self.eur_currency = self.__get_eur_currency()
         self.categories = self.__get_categories()
-        self.rating = {
-            'One': 1,
-            'Two': 2,
-            'Three': 3,
-            'Four': 4,
-            'Five': 5
-        }
-
+        self.rating = {'One': 1, 'Two': 2, 'Three': 3,
+                       'Four': 4, 'Five': 5}
+        self.books = self.__get_books()
     def __next__(self) -> bool:
         try:
             yield from map(self.__get_element, self.driver.find_elements(
@@ -102,13 +94,15 @@ class Scrapper:
         }
 
     def __get_categories(self) -> dict[str, int]:
+
         categories_ul = self.driver.find_element(
             By.XPATH, '//*[@id="default"]/div/div/div/aside/div[2]/ul/li/ul')
+        categories_a = categories_ul.find_elements(By.TAG_NAME, 'a')
 
-        categories = [category.text
-                      for category in categories_ul.find_elements(
-                          By.TAG_NAME, 'a')
-                      ]
+        categories = []
+        for item in alive_it(categories_a, title='[WEBSCRAPPING] Category data...'):
+            categories.append(item.text)
+
         categories.sort()
 
         return [{'name': category} for category in categories]
@@ -135,4 +129,12 @@ class Scrapper:
             return source
 
     def __get_books(self):
-        return tuple(self)
+        books = []
+
+        try:
+            for book in alive_it(self, 1000, title='[WEBSCRAPPING] Book data...'):
+                books.append(book)
+        except Exception as e:
+            print(e)
+        finally:
+            return tuple(books)

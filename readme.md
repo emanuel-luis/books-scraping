@@ -1,6 +1,15 @@
-# Projeto de Engenharia de Dados
-Um projeto básico de engenharia de dados com **BS4** e **Selenium** e manipulação de dados com **SQLAlchemy**, onde o objetivo é fazer webscrapping do [Books to Scrape](http://books.toscrape.com/) e guardar os resultados em um banco de dados.
+# Projeto de Raspagem de Dados
+Um projeto básico de raspagem com **BS4** e **Selenium** e manipulação de dados com **SQLAlchemy**, onde o objetivo é fazer webscrapping do [Books to Scrape](http://books.toscrape.com/) e guardar os resultados em um banco de dados.
 
+
+Para rodar localmente esse código:
+> `python -m venv .venv` 
+
+> `/.venv/Scripts/activate.bat` 
+
+> `pip install -r requirements.txt` 
+
+> `python3 main.py`
 ## Objetivo
 Criar um banco de dados com a tabela Books contendo 5 atributos que representarão um livro:
 
@@ -27,4 +36,6 @@ O `Selenium` foi usado como ferramenta para navegar e renderizar as páginas, in
 - Migrar pra outro banco de dados;
 - Melhorar a perfomance do scrapping;
 - Organizar os módulos e pastas do projeto;
+- Implementar método to_csv();
+- Comentar mais o código (?)
 ```

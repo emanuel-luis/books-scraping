@@ -1,4 +1,5 @@
 from typing import TypeVar
+from alive_progress import alive_it
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -22,33 +23,24 @@ def commit(func):
 
 
 class Table:
-    query: dict = {}
-
     @classmethod
     @commit
     def create(cls, *objects) -> None:
-        for obj in objects:
+        for obj in alive_it(objects, title=f'[DATABASE] adding object(s) into {cls.__tablename__} table...'):
             new_object = (cls(**obj)
                           if isinstance(obj, dict)
                           else cls(objects))
-            
+
             session.add(new_object)
-        print(f'[LOG] Created {len(objects)} rows into {cls.__tablename__}.')
 
     @classmethod
     def read(cls, *, where: dict = {}):
-
         query = session.query(cls)
 
         for key, value in where.items():
             query = query.filter(getattr(cls, key) == value)
 
-        query = query.all()
-
-        if not where:
-            cls.query = query
-
-        return query
+        return query.all()
 
     @classmethod
     @commit
@@ -60,18 +52,13 @@ class Table:
                   f'row from {cls.__tablename__}')
             return
 
-        for obj in objects:
+        for obj in alive_it(objects, title=f'[DATABASE] updating object(s) from {cls.__tablename__} table...'):
             for key, value in kwargs.items():
                 setattr(obj, key, value)
-
-        print(f'[LOG] Updated {len(objects)} '
-              f'items from {cls.__tablename__}')
 
     @classmethod
     @commit
     def delete(cls, *, where: dict) -> None:
         objects = cls.read(where=where)
-        for obj in objects:
+        for obj in alive_it(objects, title=f'[DATABASE] deleting object(s) from {cls.__tablename__} table...'):
             session.delete(obj)
-        print(f'[LOG] Deleting {len(objects)} rows'
-              f' from {cls.__tablename__}...')

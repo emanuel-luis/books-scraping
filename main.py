@@ -2,9 +2,9 @@ from src import Book, Category, Scrapper
 
 
 def main():
-    library = Scrapper()
-    Category.handler(*library.categories)
-    Book.handler(*library)
+    scrapper = Scrapper()
+    Category.handler(*scrapper.categories)
+    Book.handler(*scrapper.books)
 
 
 if __name__ == '__main__':
