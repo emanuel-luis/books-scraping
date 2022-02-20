@@ -1,5 +1,4 @@
 from selenium.webdriver.support import expected_conditions as EC
-from itertools import count, cycle
 from typing import Generator
 from selenium.webdriver import Firefox, FirefoxOptions
 from selenium.webdriver.firefox.service import Service
@@ -26,7 +25,7 @@ class Scrapper:
         service = Service(r'C:\bin\geckodriver.exe', log_path='nul')
         driver = Firefox(options=options, service=service)
 
-        driver.get('https://books.toscrape.com/catalogue/page-9.html')
+        driver.get('https://books.toscrape.com/')
 
         self.driver = driver
         self.homepage = driver.current_window_handle
