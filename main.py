@@ -1,21 +1,11 @@
-import scrapping
-from alive_progress import alive_bar
-import database as db
+from src import Book, Category, Scrapper
 
-with alive_bar(1000) as bar:
-    for book in scrapping.get_books():
-        w = {'name': book.name, 'category': book.category}
-
-        query = db.read(where=w)
-        if len(query) == 0:
-            db.create(**book)
-        # else:
-            # db.update(where=w, **book)
-        
-        bar()
 
 def main():
-    
-    pass
+    library = Scrapper()
+    Category.handler(*library.categories)
+    Book.handler(*library)
+
+
 if __name__ == '__main__':
     main()
