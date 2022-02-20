@@ -1,5 +1,5 @@
 from typing import TypeVar
-from alive_progress import alive_it
+from alive_progress import alive_bar, alive_it
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -26,7 +26,9 @@ class Table:
     @classmethod
     @commit
     def create(cls, *objects) -> None:
-        for obj in alive_it(objects, title=f'[DATABASE] adding object(s) into {cls.__tablename__} table...'):
+        t = f'[DATABASE] Adding {len(objects)} object(s) ' \
+            f'into {cls.__tablename__} table...'
+        for obj in alive_it(objects, title=t):
             new_object = (cls(**obj)
                           if isinstance(obj, dict)
                           else cls(objects))
@@ -47,12 +49,15 @@ class Table:
     def update(cls, *, where: dict, **kwargs) -> None:
         objects = cls.read(where=where)
 
+        t = f'[DATABASE] Updating {len(objects)} object(s) ' \
+            f'from {cls.__tablename__} table...'
+
         if not objects:
             print('[LOG] Tried to update a non-existent'
                   f'row from {cls.__tablename__}')
             return
 
-        for obj in alive_it(objects, title=f'[DATABASE] updating object(s) from {cls.__tablename__} table...'):
+        for obj in alive_it(objects, title=t):
             for key, value in kwargs.items():
                 setattr(obj, key, value)
 
@@ -60,5 +65,8 @@ class Table:
     @commit
     def delete(cls, *, where: dict) -> None:
         objects = cls.read(where=where)
-        for obj in alive_it(objects, title=f'[DATABASE] deleting object(s) from {cls.__tablename__} table...'):
+
+        t = f'[DATABASE] Deleting {len(objects)} object(s) ' \
+            f'from {cls.__tablename__} table...'
+        for obj in alive_it(objects, title=t):
             session.delete(obj)

@@ -35,8 +35,7 @@ class Book(Base, Table):
 
             category_id = obj['category_id'] = Category.mapping[category]
             name = obj.get('name')
-
-            if (name, category) in query:
+            if (name, category_id) in query:
                 cls.update(where=dict(name=name, category_id=category_id),
                            **obj)
             else:
@@ -48,7 +47,7 @@ class Book(Base, Table):
     @classmethod
     def to_tuple(cls):
         query = cls.read()
-        return [(book.name, book.category) for book in query]
+        return [(book.name, book.category_id) for book in query]
 
 
 class Category(Base, Table):
