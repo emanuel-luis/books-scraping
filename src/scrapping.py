@@ -32,6 +32,7 @@ class Scrapper:
         self.rating = {'One': 1, 'Two': 2, 'Three': 3,
                        'Four': 4, 'Five': 5}
         self.books = self.__get_books()
+
     def __next__(self) -> bool:
         try:
             yield from map(self.__get_element, self.driver.find_elements(
@@ -103,6 +104,7 @@ class Scrapper:
         for item in alive_it(categories_a, title='[WEBSCRAPPING] Getting categories data...'):
             categories.append(item.text)
 
+        print('\n')
         categories.sort()
 
         return [{'name': category} for category in categories]
@@ -134,6 +136,8 @@ class Scrapper:
         try:
             for book in alive_it(self, 1000, title='[WEBSCRAPPING] Getting books data...'):
                 books.append(book)
+            
+            print('\n')
         except Exception as e:
             print(e)
         finally:

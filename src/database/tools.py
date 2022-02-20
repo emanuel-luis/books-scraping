@@ -35,6 +35,8 @@ class Table:
 
             session.add(new_object)
 
+        print('\n')
+
     @classmethod
     def read(cls, *, where: dict = {}):
         query = session.query(cls)
@@ -61,6 +63,8 @@ class Table:
             for key, value in kwargs.items():
                 setattr(obj, key, value)
 
+        print('\n')
+
     @classmethod
     @commit
     def delete(cls, *, where: dict) -> None:
@@ -70,3 +74,5 @@ class Table:
             f'from {cls.__tablename__} table...'
         for obj in alive_it(objects, title=t):
             session.delete(obj)
+
+        print('\n')
