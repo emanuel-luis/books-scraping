@@ -67,10 +67,27 @@ ON CONFLICT (run_id, upc) DO UPDATE SET
     rating = excluded.rating, fetched_at = excluded.fetched_at
 """
 
-_FIRST_SEEN = """
-UPDATE books SET first_seen_run_id = s.first_run
-FROM (SELECT upc, min(run_id) AS first_run FROM book_snapshots GROUP BY upc) s
-WHERE books.upc = s.upc AND books.first_seen_run_id <> s.first_run
+# A run parsed again can yield fewer rows (a parser fix, an integrity reject): its snapshots
+# that the new Parquet no longer has are stale. Only those keys are deleted, so no key is
+# deleted and re-inserted in the same transaction.
+_DROP_STALE_SNAPSHOTS = """
+DELETE FROM book_snapshots
+WHERE run_id = ? AND upc NOT IN (SELECT upc FROM read_parquet(?))
+"""
+
+# A book is only as current as its snapshots: without any it goes, and first/last seen follow
+# the remaining runs. A book that lost its newest snapshot keeps the attributes of that run
+# until a run that still has it is loaded again.
+_DROP_ORPHAN_BOOKS = "DELETE FROM books WHERE upc NOT IN (SELECT upc FROM book_snapshots)"
+
+_SEEN_RUNS = """
+UPDATE books SET first_seen_run_id = s.first_run, last_seen_run_id = s.last_run
+FROM (
+    SELECT upc, min(run_id) AS first_run, max(run_id) AS last_run
+    FROM book_snapshots GROUP BY upc
+) s
+WHERE books.upc = s.upc
+  AND (books.first_seen_run_id <> s.first_run OR books.last_seen_run_id <> s.last_run)
 """
 
 _UPSERT_RUN = """
@@ -121,7 +138,9 @@ def load_run(paths: RunPaths, run_id: str) -> StepSummary:
             assert expected is not None
             con.execute(_UPSERT_BOOKS, [naive_utc(parse_summary.finished_at), parquet])
             con.execute(_UPSERT_SNAPSHOTS, [parquet])
-            con.execute(_FIRST_SEEN)
+            con.execute(_DROP_STALE_SNAPSHOTS, [run_id, parquet])
+            con.execute(_DROP_ORPHAN_BOOKS)
+            con.execute(_SEEN_RUNS)
             snaps = con.execute(
                 "SELECT count(*) FROM book_snapshots WHERE run_id = ?", [run_id]
             ).fetchone()

@@ -5,6 +5,7 @@ from decimal import Decimal
 import pytest
 from conftest import A_LIGHT, PAGES, FakeSite, crawl_site
 
+from books_scraping import load
 from books_scraping.config import Settings
 from books_scraping.load import connect, load_run
 from books_scraping.models import ManifestEntry
@@ -89,15 +90,52 @@ def test_newer_run_updates_in_order(settings: Settings) -> None:
     ]
 
 
-def test_snapshot_count_mismatch_fails_and_rolls_back(settings: Settings, raw_run: str) -> None:
+def corrupt_and_reparse(paths: RunPaths, run_id: str) -> None:
+    """Change one saved page: the reparse rejects it (integrity) and yields one row fewer."""
+    (paths.raw_dir(run_id) / "pages" / A_LIGHT).write_bytes(b"tampered")
+    assert transform(paths, run_id).rows_out == 2
+
+
+def test_reparsed_run_with_fewer_rows_reloads(settings: Settings, raw_run: str) -> None:
     paths = RunPaths(settings.data_dir)
     transform(paths, raw_run)
-    con = connect(paths.warehouse)
-    con.execute(f"INSERT INTO book_snapshots VALUES ('{raw_run}', 'stray', 1, 'GBP', 1, 1, now())")
-    con.close()
-    with pytest.raises(StepError, match="boundary check"):
+    load_run(paths, raw_run)
+    corrupt_and_reparse(paths, raw_run)
+    assert load_run(paths, raw_run).rows_out == 2
+    first = dump(paths)
+    assert len(first["book_snapshots"]) == len(first["books"]) == 2
+    assert query(paths, "SELECT count(*) FROM books WHERE upc = 'a897fe39b1053632'") == [(0,)]
+    load_run(paths, raw_run)
+    assert dump(paths) == first
+
+
+def test_book_falls_back_to_its_older_snapshot(settings: Settings) -> None:
+    prepare(settings, OLD)
+    paths = prepare(settings, NEW, price="£60.00".encode())
+    load_run(paths, OLD)
+    load_run(paths, NEW)
+    corrupt_and_reparse(paths, NEW)
+    load_run(paths, NEW)
+    assert query(
+        paths,
+        "SELECT first_seen_run_id, last_seen_run_id FROM books WHERE upc = 'a897fe39b1053632'",
+    ) == [(OLD, OLD)]
+    assert query(paths, "SELECT run_id FROM book_snapshots WHERE upc = 'a897fe39b1053632'") == [
+        (OLD,)
+    ]
+
+
+def test_snapshot_count_mismatch_fails_and_rolls_back(
+    settings: Settings, raw_run: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths = RunPaths(settings.data_dir)
+    transform(paths, raw_run)
+    short = load._UPSERT_SNAPSHOTS.replace("FROM read_parquet(?)", "FROM read_parquet(?) LIMIT 1")
+    monkeypatch.setattr(load, "_UPSERT_SNAPSHOTS", short)
+    with pytest.raises(StepError, match="boundary check failed: 1 snapshots for 3 rows"):
         load_run(paths, raw_run)
     assert query(paths, "SELECT count(*) FROM books") == [(0,)]
+    assert query(paths, "SELECT count(*) FROM pipeline_runs") == [(0,)]
 
 
 def test_unprocessed_run_is_refused(settings: Settings) -> None:
