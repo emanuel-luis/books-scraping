@@ -4,7 +4,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from conftest import A_LIGHT, IN_HER_WAKE, FakeSite, crawl_site
+from conftest import A_LIGHT, IN_HER_WAKE, PAGES, FakeSite, crawl_site, listing_html
 
 from books_scraping.config import Settings
 from books_scraping.fetch import Fetcher, FetchError, crawl, url_to_relpath
@@ -166,9 +166,29 @@ def test_url_to_relpath(url: str, rel: str) -> None:
     assert url_to_relpath(url) == rel
 
 
-def test_url_to_relpath_rejects_traversal() -> None:
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://books.toscrape.com/../x",
+        "https://books.toscrape.com/catalogue/..\\..\\..\\evil.html",
+        "https://books.toscrape.com/C:evil.html",
+    ],
+)
+def test_url_to_relpath_rejects_paths_that_leave_the_run_dir(url: str) -> None:
     with pytest.raises(ValueError, match="unsafe"):
-        url_to_relpath("https://books.toscrape.com/../x")
+        url_to_relpath(url)
+
+
+def test_unsafe_link_is_skipped_and_the_crawl_continues(settings: Settings) -> None:
+    pages = {
+        "/": listing_html(["..\\..\\..\\evil.html", A_LIGHT]),
+        "/" + A_LIGHT: PAGES["/" + A_LIGHT],
+    }
+    site = FakeSite(pages=pages)
+    summary = crawl_site(settings, site)
+    assert (summary.status, summary.skipped_robots, summary.product_pages) == ("ok", 1, 1)
+    assert not any("evil" in path for path in site.requests)
+    assert not list(settings.data_dir.rglob("evil.html"))
 
 
 @pytest.mark.network
