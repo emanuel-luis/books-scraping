@@ -9,6 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 import requests
+import os
 import re
 
 
@@ -49,7 +50,8 @@ class Scrapper:
         while self.has_next_page:
             yield from map(self.__get_book_attrs, next(self))
 
-    def __get_eur_currency(self, api_key='42e068b6c9235f430e2abc6945f16a40') -> float:
+    def __get_eur_currency(self, api_key: str | None = None) -> float:
+        api_key = api_key or os.environ['CURRENCYLAYER_API_KEY']
         url = 'http://api.currencylayer.com/live'
         query = f'?access_key={api_key}&currencies=EUR,BRL,USD&format=1'
 
