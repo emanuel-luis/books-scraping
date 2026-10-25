@@ -118,8 +118,9 @@ def test_book_falls_back_to_its_older_snapshot(settings: Settings) -> None:
     load_run(paths, NEW)
     assert query(
         paths,
-        "SELECT first_seen_run_id, last_seen_run_id FROM books WHERE upc = 'a897fe39b1053632'",
-    ) == [(OLD, OLD)]
+        "SELECT price, first_seen_run_id, last_seen_run_id FROM books "
+        "WHERE upc = 'a897fe39b1053632'",
+    ) == [(Decimal("51.77"), OLD, OLD)]
     assert query(paths, "SELECT run_id FROM book_snapshots WHERE upc = 'a897fe39b1053632'") == [
         (OLD,)
     ]
