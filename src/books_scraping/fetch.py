@@ -99,12 +99,25 @@ class Fetcher:
 
 
 def url_to_relpath(url: str) -> str:
+    """The file path of a URL inside the run dir; ValueError when it could leave the run dir.
+
+    Backslashes and colons are refused too: on Windows they are a separator and a drive marker,
+    so `..\\x` or `C:x` would escape even though the POSIX parts look harmless.
+    """
     path = urlsplit(url).path.lstrip("/")
     if not path or path.endswith("/"):
         path += "index.html"
-    if ".." in PurePosixPath(path).parts:
+    if ".." in PurePosixPath(path).parts or any(c in path for c in "\\:\0"):
         raise ValueError(f"unsafe path in {url}")
     return path
+
+
+def _safe_path(url: str) -> bool:
+    try:
+        url_to_relpath(url)
+    except ValueError:
+        return False
+    return True
 
 
 def _robots(response: httpx.Response, agent: str) -> tuple[RobotFileParser, float]:
@@ -203,10 +216,15 @@ def crawl(
         fetcher.min_interval = max(fetcher.min_interval, delay)
 
         def allowed(url: str) -> bool:
-            if urlsplit(url).netloc == host and robots.can_fetch(settings.user_agent, url):
+            """Same host, a path that stays inside the run dir, and robots.txt allows it."""
+            if (
+                urlsplit(url).netloc == host
+                and _safe_path(url)
+                and robots.can_fetch(settings.user_agent, url)
+            ):
                 return True
             counts["skipped"] += 1
-            log.warning("skipping %s (robots.txt or other host)", url)
+            log.warning("skipping %s (robots.txt, other host or unsafe path)", url)
             return False
 
         product_urls: list[str] = []
