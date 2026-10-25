@@ -10,9 +10,9 @@ import httpx
 
 from books_scraping.config import Settings
 from books_scraping.fetch import Fetcher
-from books_scraping.load import connect, naive_utc
+from books_scraping.load import connect
 from books_scraping.models import FxRate, StepSummary
-from books_scraping.runs import RunPaths, StepError, step_logger, utc_now
+from books_scraping.runs import RunPaths, StepError, naive_utc, step_logger, utc_now
 
 
 def parse_rates(text: str, quotes: list[str]) -> list[FxRate]:

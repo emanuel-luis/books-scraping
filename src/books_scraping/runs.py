@@ -15,6 +15,11 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def naive_utc(value: datetime) -> datetime:
+    """UTC wall-clock time without tzinfo: the Parquet and DuckDB columns are UTC TIMESTAMPs."""
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
 def new_run_id(now: datetime | None = None) -> str:
     """UTC start time as YYYYMMDDTHHMMSSZ; sorts in time order."""
     return (now or utc_now()).astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
