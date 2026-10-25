@@ -14,7 +14,7 @@ from books_scraping.fetch import crawl
 from books_scraping.fx import load_fx
 from books_scraping.load import connect, load_run
 from books_scraping.models import StepSummary
-from books_scraping.runs import RunPaths, StepError, latest_run
+from books_scraping.runs import RunPaths, StepError, latest_run, new_run_id
 from books_scraping.transform import transform
 
 app = typer.Typer(add_completion=False, no_args_is_help=True, help="books.toscrape.com pipeline.")
@@ -60,7 +60,7 @@ def _step(fn: Callable[[], StepSummary]) -> StepSummary:
 def _resolve(root_run: str | None, root: str, paths: RunPaths) -> str:
     run_id = root_run or latest_run(paths.raw_root if root == "raw" else paths.processed_root)
     if run_id is None:
-        typer.echo(f"error: no complete {root} run found under {paths.data_dir}", err=True)
+        typer.echo(f"error: no successful {root} run found under {paths.data_dir}", err=True)
         raise typer.Exit(1)
     return run_id
 
@@ -74,7 +74,7 @@ def fetch(limit: Limit = None, max_pages: MaxPages = None) -> None:
 
 @app.command()
 def parse(run_id: RunId = None) -> None:
-    """Raw run -> processed run (default: latest complete raw run)."""
+    """Raw run -> processed run (default: latest successful raw run)."""
     paths = RunPaths(Settings().data_dir)
     run_id = _resolve(run_id, "raw", paths)
     _step(lambda: transform(paths, run_id))
@@ -92,7 +92,7 @@ def load(run_id: RunId = None) -> None:
 def fx() -> None:
     """Load FX rates for the currencies in books."""
     settings = Settings()
-    _step(lambda: load_fx(settings, "-"))
+    _step(lambda: load_fx(settings, new_run_id()))
 
 
 @app.command()

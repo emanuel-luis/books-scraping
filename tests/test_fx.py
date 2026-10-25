@@ -56,6 +56,15 @@ def test_load_fx_is_idempotent(settings: Settings, raw_run: str) -> None:
     assert str(requests[0].url) == (
         "https://api.frankfurter.dev/v1/latest?base=GBP&symbols=EUR,USD,BRL"
     )
+    con = connect(paths.warehouse)
+    try:
+        runs = con.execute(
+            "SELECT step, status, rows_out FROM pipeline_runs WHERE run_id = ? AND step = 'fx'",
+            [raw_run],
+        ).fetchall()
+    finally:
+        con.close()
+    assert runs == [("fx", "ok", 3)]
 
 
 def test_no_books_means_no_requests(settings: Settings) -> None:

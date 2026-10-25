@@ -10,7 +10,7 @@ import httpx
 
 from books_scraping.config import Settings
 from books_scraping.fetch import Fetcher
-from books_scraping.load import connect
+from books_scraping.load import connect, record_run
 from books_scraping.models import FxRate, StepSummary
 from books_scraping.runs import RunPaths, StepError, naive_utc, step_logger, utc_now
 
@@ -68,15 +68,17 @@ def load_fx(
                     for r in rates
                 ],
             )
+        summary = StepSummary(
+            run_id=run_id,
+            step="fx",
+            status="ok",
+            started_at=started,
+            finished_at=utc_now(),
+            rows_in=len(rates),
+            rows_out=len(rates),
+        )
+        record_run(con, summary)
     finally:
         con.close()
     log.info("%d rates loaded", len(rates))
-    return StepSummary(
-        run_id=run_id,
-        step="fx",
-        status="ok",
-        started_at=started,
-        finished_at=utc_now(),
-        rows_in=len(rates),
-        rows_out=len(rates),
-    )
+    return summary

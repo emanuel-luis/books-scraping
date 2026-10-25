@@ -11,6 +11,7 @@ from books_scraping import __version__, cli
 from books_scraping.config import Settings
 from books_scraping.fetch import crawl
 from books_scraping.fx import load_fx
+from books_scraping.load import connect
 
 runner = CliRunner()
 
@@ -80,6 +81,30 @@ def test_failed_crawl_exits_1(monkeypatch: pytest.MonkeyPatch) -> None:
         cli, "crawl", partial(crawl, transport=FakeSite(pages={}).transport, sleep=lambda _s: None)
     )
     assert runner.invoke(cli.app, ["fetch"]).exit_code == 1
+
+
+def test_parse_defaults_to_the_latest_successful_raw_run(
+    settings: Settings, raw_run: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        cli, "crawl", partial(crawl, transport=FakeSite(pages={}).transport, sleep=lambda _s: None)
+    )
+    failed = runner.invoke(cli.app, ["fetch"])
+    assert failed.exit_code == 1
+    assert min(p.name for p in (settings.data_dir / "raw").iterdir()) == raw_run
+    assert runner.invoke(cli.app, ["parse"]).exit_code == 0
+    assert [p.name for p in (settings.data_dir / "processed").iterdir()] == [raw_run]
+
+
+def test_standalone_fx_records_its_run(settings: Settings, raw_run: str) -> None:
+    for command in (["parse"], ["load"], ["fx"]):
+        assert runner.invoke(cli.app, command).exit_code == 0, command
+    con = connect(settings.data_dir / "warehouse.duckdb")
+    try:
+        rows = con.execute("SELECT run_id FROM pipeline_runs WHERE step = 'fx'").fetchall()
+    finally:
+        con.close()
+    assert len(rows) == 1 and rows[0][0] != raw_run and rows[0][0].endswith("Z")
 
 
 def test_python_dash_m_runs_the_cli() -> None:
