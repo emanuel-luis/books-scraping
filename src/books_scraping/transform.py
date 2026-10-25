@@ -2,7 +2,6 @@
 
 import hashlib
 import shutil
-from datetime import datetime
 from typing import Literal
 
 import duckdb
@@ -10,7 +9,7 @@ from pydantic import ValidationError
 
 from books_scraping.models import Book, ManifestEntry, Reject, StepSummary
 from books_scraping.parse import ParseError, parse_product
-from books_scraping.runs import RunPaths, StepError, step_logger, utc_now
+from books_scraping.runs import RunPaths, StepError, naive_utc, step_logger, utc_now
 
 Stage = Literal["integrity", "parse", "validate"]
 
@@ -21,11 +20,6 @@ CREATE TABLE books (
     description VARCHAR, fetched_at TIMESTAMP, run_id VARCHAR
 )
 """
-
-
-def _naive_utc(value: datetime) -> datetime:
-    """UTC wall clock without tzinfo: the Parquet and DuckDB columns hold UTC TIMESTAMPs."""
-    return value.replace(tzinfo=None)
 
 
 def transform(paths: RunPaths, run_id: str) -> StepSummary:
@@ -87,7 +81,7 @@ def transform(paths: RunPaths, run_id: str) -> StepSummary:
             [
                 (
                     b.upc, b.url, b.title, b.category, b.price, b.currency, b.stock, b.rating,
-                    b.num_reviews, b.description, _naive_utc(b.fetched_at), b.run_id,
+                    b.num_reviews, b.description, naive_utc(b.fetched_at), b.run_id,
                 )
                 for b in sorted(books.values(), key=lambda b: b.upc)
             ],

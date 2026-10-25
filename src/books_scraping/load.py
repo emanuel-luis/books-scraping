@@ -1,12 +1,11 @@
 """Load step: processed Parquet -> DuckDB serving layer. Idempotent per run."""
 
-from datetime import datetime
 from pathlib import Path
 
 import duckdb
 
 from books_scraping.models import StepSummary
-from books_scraping.runs import RunPaths, StepError, step_logger, utc_now
+from books_scraping.runs import RunPaths, StepError, naive_utc, step_logger, utc_now
 
 # All timestamps are TIMESTAMP columns holding UTC wall-clock time (no TIMESTAMPTZ: it needs
 # pytz to round-trip into Python). A test asserts the round trip.
@@ -89,10 +88,6 @@ def connect(path: Path) -> duckdb.DuckDBPyConnection:
     con = duckdb.connect(str(path))
     con.execute(DDL)
     return con
-
-
-def naive_utc(value: datetime) -> datetime:
-    return value.replace(tzinfo=None)
 
 
 def record_run(con: duckdb.DuckDBPyConnection, summary: StepSummary) -> None:
