@@ -1,5 +1,6 @@
 """Run ids, the on-disk layout of the layers and the latest-run lookup."""
 
+import json
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -48,11 +49,20 @@ class RunPaths:
         return self.processed_root / run_id
 
 
+def _succeeded(run_dir: Path) -> bool:
+    """The run finished (run.json written last) and its step reported ok."""
+    try:
+        summary = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return isinstance(summary, dict) and summary.get("status") == "ok"
+
+
 def latest_run(root: Path) -> str | None:
-    """Newest run directory under root that has a run.json (a complete run)."""
+    """Newest run directory under root whose step finished with status ok."""
     if not root.is_dir():
         return None
-    done = sorted(p.name for p in root.iterdir() if (p / "run.json").is_file())
+    done = sorted(p.name for p in root.iterdir() if _succeeded(p))
     return done[-1] if done else None
 
 
