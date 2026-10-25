@@ -1,0 +1,61 @@
+[build-system]
+requires = ["uv_build>=0.9.22,<0.10"]
+build-backend = "uv_build"
+
+[project]
+name = "books-scraping"
+version = "0.1.0"
+description = "Small ingestion pipeline for books.toscrape.com: raw landing, validated Parquet, DuckDB serving layer"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Emanuel Luis", email = "emanuel.filho08@gmail.com" }]
+classifiers = ["Programming Language :: Python :: 3 :: Only", "Typing :: Typed"]
+dependencies = [
+  "httpx>=0.28",
+  "tenacity>=9",
+  "selectolax>=0.3",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "duckdb>=1.1",
+  "typer>=0.15",
+]
+
+[project.scripts]
+books-scraping = "books_scraping.cli:app"
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-timeout>=2",
+  "pytest-cov>=6",
+  "hypothesis>=6.100",
+  "ruff>=0.8",
+  "mypy>=1.13",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config", "-m", "not network"]
+timeout = 60
+markers = ["network: hits the live site (pytest -m network)"]
+
+[tool.coverage.run]
+source = ["books_scraping"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["BLE"]  # every broad except says why: `# noqa: BLE001 - reason`
+
+[tool.mypy]
+files = ["src"]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["selectolax.*"]
+ignore_missing_imports = true
