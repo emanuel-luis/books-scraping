@@ -15,8 +15,9 @@ pages). The pipeline treats it like any other external source.
 - Layered ingestion: raw HTML landing with a manifest (URL, HTTP status, UTC fetch time,
   SHA-256), validated Parquet, and a DuckDB serving layer.
 - Idempotent, re-runnable steps: raw runs are immutable, parsing is deterministic, and the load
-  upserts by a natural key (the book's UPC). Loading the same run twice changes nothing, and
-  loading an older run never overwrites newer data.
+  upserts by a natural key (the book's UPC). Loading the same run twice changes nothing,
+  loading an older run never overwrites newer data, and a run parsed again (after a parser fix)
+  reloads cleanly, dropping the rows it no longer has.
 - Data contracts and quality checks at every boundary: checksum verification of raw files,
   pydantic models, rejects written with their reason, and a row-count reconciliation after the
   load.
@@ -82,7 +83,7 @@ docker run --rm -v books-scraping-data:/data books-scraping stats
 | Command | What it does |
 | --- | --- |
 | `books-scraping fetch [--limit N] [--max-pages N]` | crawl into a new raw run and print its `run_id` |
-| `books-scraping parse [--run-id ID]` | raw → processed (default: the latest complete raw run) |
+| `books-scraping parse [--run-id ID]` | raw → processed (default: the latest successful raw run) |
 | `books-scraping load [--run-id ID]` | processed → DuckDB (default: the latest processed run) |
 | `books-scraping fx` | load ECB rates for the currencies found in `books` |
 | `books-scraping run [--limit N] [--max-pages N] [--fx]` | fetch → parse → load (→ fx) |
@@ -96,7 +97,7 @@ stderr with UTC timestamps, the `run_id` and the step.
 
 | Boundary | Check | On failure |
 | --- | --- | --- |
-| site → raw | robots.txt allows the URL; the host is the configured one | skipped and counted |
+| site → raw | robots.txt allows the URL, the host is the configured one, and the URL maps to a file inside the run directory | skipped and counted |
 | site → raw | HTTP status; retries on transport errors, 429 and 5xx | recorded in the manifest, crawl continues |
 | raw → processed | `run.json` exists (the fetch finished) | the step fails |
 | raw → processed | file SHA-256 equals the manifest's | reject, stage `integrity` |

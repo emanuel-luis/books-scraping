@@ -34,7 +34,12 @@ visible.
 - Raw pages are saved as received and decoded as UTF-8 explicitly (the site sends no charset).
 - Parse is deterministic: the same raw run gives the same processed rows.
 - Load is idempotent and keyed by UPC; an older run never overwrites newer `books` rows.
-  Snapshot count must equal the Parquet row count, inside one transaction.
+  Reloading a reparsed run deletes its snapshots that the new Parquet lacks (only those keys:
+  never delete and re-insert one key in a transaction). Snapshot count must equal the Parquet
+  row count, inside one transaction.
+- Every crawled URL must map inside the run dir (`url_to_relpath` refuses `..`, `\`, `:`);
+  unsafe URLs are skipped before any request.
+- `latest_run` picks only runs whose `run.json` says `ok`.
 - Prices stay as scraped (amount + currency); conversion only in `fx` / `books_priced`.
 - Timestamps are aware UTC in Python and UTC `TIMESTAMP` columns in Parquet and DuckDB
   (convert with `naive_utc`).
