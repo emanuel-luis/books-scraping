@@ -31,8 +31,8 @@ demo:           ## small live run, then the table counts
 docker-build:   ## build the image
 	docker build -t books-scraping .
 
-docker-run:     ## run the image, data in ./data
-	docker run --rm -v "$(CURDIR)/data:/data" books-scraping
+docker-run:     ## run the image, data in the books-scraping-data volume
+	docker run --rm -v books-scraping-data:/data books-scraping
 
 clean:          ## remove caches and build output
 	rm -rf .venv .mypy_cache .pytest_cache .ruff_cache .hypothesis .coverage htmlcov dist
