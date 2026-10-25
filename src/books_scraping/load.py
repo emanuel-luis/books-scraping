@@ -76,8 +76,9 @@ WHERE run_id = ? AND upc NOT IN (SELECT upc FROM read_parquet(?))
 """
 
 # A book is only as current as its snapshots: without any it goes, and first/last seen follow
-# the remaining runs. A book that lost its newest snapshot keeps the attributes of that run
-# until a run that still has it is loaded again.
+# the remaining runs. A book that lost its newest snapshot takes price, currency, stock and
+# rating back from the snapshot it now falls back to; the descriptive columns (title,
+# description...) keep their last loaded values until a run that has the book is loaded again.
 _DROP_ORPHAN_BOOKS = "DELETE FROM books WHERE upc NOT IN (SELECT upc FROM book_snapshots)"
 
 _SEEN_RUNS = """
@@ -88,6 +89,15 @@ FROM (
 ) s
 WHERE books.upc = s.upc
   AND (books.first_seen_run_id <> s.first_run OR books.last_seen_run_id <> s.last_run)
+"""
+
+# No-op in the normal flow, where the last-seen snapshot was written from the same row.
+_SYNC_LAST_SNAPSHOT = """
+UPDATE books SET price = s.price, currency = s.currency, stock = s.stock, rating = s.rating
+FROM book_snapshots s
+WHERE s.upc = books.upc AND s.run_id = books.last_seen_run_id
+  AND (books.price <> s.price OR books.currency <> s.currency
+       OR books.stock <> s.stock OR books.rating <> s.rating)
 """
 
 _UPSERT_RUN = """
@@ -141,6 +151,7 @@ def load_run(paths: RunPaths, run_id: str) -> StepSummary:
             con.execute(_DROP_STALE_SNAPSHOTS, [run_id, parquet])
             con.execute(_DROP_ORPHAN_BOOKS)
             con.execute(_SEEN_RUNS)
+            con.execute(_SYNC_LAST_SNAPSHOT)
             snaps = con.execute(
                 "SELECT count(*) FROM book_snapshots WHERE run_id = ?", [run_id]
             ).fetchone()

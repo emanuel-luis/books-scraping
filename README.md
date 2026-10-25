@@ -17,7 +17,8 @@ pages). The pipeline treats it like any other external source.
 - Idempotent, re-runnable steps: raw runs are immutable, parsing is deterministic, and the load
   upserts by a natural key (the book's UPC). Loading the same run twice changes nothing,
   loading an older run never overwrites newer data, and a run parsed again (after a parser fix)
-  reloads cleanly, dropping the rows it no longer has.
+  reloads cleanly: snapshots it no longer has are dropped, and a book seen in an earlier run
+  falls back to that run's price and stock.
 - Data contracts and quality checks at every boundary: checksum verification of raw files,
   pydantic models, rejects written with their reason, and a row-count reconciliation after the
   load.
