@@ -22,6 +22,10 @@ The 2022 Selenium scraper is replaced by a layered ingestion pipeline (version 0
 - Multi-stage Docker image running as a non-root user.
 - GitHub Actions: lint, tests, Docker build, pip-audit, zizmor; Dependabot.
 - MIT license, decisions log and refactor plan in `docs/`.
+- D2 diagrams in `docs/diagrams/` (data flow, the `run` sequence, the DuckDB data model),
+  rendered to SVG with a pinned D2 0.9.0; `make diagrams`, `make diagrams-check`,
+  `make diagrams-watch` and a CI `diagrams` job that fails on a stale SVG. The README shows
+  them in place of the Mermaid flowchart.
 
 ### Changed
 
