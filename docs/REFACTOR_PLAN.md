@@ -183,8 +183,8 @@ on success, 1 on a failed step.
 
 ## Docs
 
-README (English, per the portfolio README standard: what it demonstrates, Mermaid flow with
-the three layers named, tech stack, one-command quickstart, CLI, data contracts and quality
+README (English, per the portfolio README standard: what it demonstrates, a flow diagram with
+the three layers named (D2 since 2026-10-27, see DECISIONS 13), tech stack, one-command quickstart, CLI, data contracts and quality
 checks, configuration, structure, politeness notes, license), CHANGELOG (`[Unreleased]`),
 MIT LICENSE, CLAUDE.md (Commands, Repo map, Invariants, Conventions).
 

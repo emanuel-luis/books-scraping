@@ -13,6 +13,10 @@ visible.
 - `make test-network`: the `network`-marked test against the live site (deselected by default).
 - `make demo`: `run --limit 40 --max-pages 2 --fx`, then `stats`.
 - `make docker-build`, `make docker-run`.
+- `make d2-install` (pinned D2 0.9.0, sha256 checked), `make diagrams` (render every
+  `docs/diagrams/*.d2` to SVG), `make diagrams-check` (the CI `diagrams` job: render, fail on any
+  diff), `make diagrams-watch NAME=<name>` (live preview). They need bash: on Windows run them
+  in WSL, where D2 lives in `~/.local/share/d2/v0.9.0`.
 - On Windows without make, run the underlying `uv run ...` commands.
 
 ## Repo map
@@ -26,6 +30,8 @@ visible.
 - `models.py`: pydantic contracts (`ManifestEntry`, `Book`, `Reject`, `StepSummary`, `FxRate`).
 - `tests/fixtures/site/`: saved pages, served through `httpx.MockTransport`; see its README.
 - `docs/DECISIONS.md`: decisions log. `docs/REFACTOR_PLAN.md`: the design.
+- `docs/diagrams/`: D2 sources (`data-flow`, `user-flows-run`, `data-model`), the shared
+  `_style.d2` and the committed SVGs the README shows.
 
 ## Invariants
 
@@ -54,3 +60,6 @@ visible.
 - No secrets in the repo: settings come from `BOOKS_*` env vars, none of them secret.
 - Record design decisions in `docs/DECISIONS.md`; update README and CHANGELOG with behavior
   changes.
+- Diagrams: edit the `.d2` source (with an editor, not `sed`: it mangles `\n` and `·`), run
+  `make diagrams`, commit source and SVG together. A change to the steps, layers or DuckDB
+  schema updates the matching diagram. No Mermaid.
