@@ -1,0 +1,82 @@
+# DuckDB serving layer: the four tables and the view books_priced, from the DDL in
+# src/books_scraping/load.py (types as DuckDB reports them). The DDL declares primary keys only;
+# the dashed arrows are logical relationships (same UPC, same run) and the joins of the view.
+...@_style
+
+title: "Data model: DuckDB serving layer (data/warehouse.duckdb)" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+note: "The DDL declares primary keys only: dashed arrows are logical relationships (same UPC, same run)\nand the joins of the view. books keeps the first and last run_id among its snapshots, and the price\nand stock of the last one. books_priced takes, per quote, the latest rate whose base is the book's\ncurrency (NULL without fx). TIMESTAMP columns hold UTC; a run_id is the UTC start time of its run\n(the fetch, or a standalone fx command)." {
+  shape: text
+  near: bottom-center
+  style.font-size: 16
+}
+
+direction: right
+
+book_snapshots: {
+  shape: sql_table
+  run_id: VARCHAR {constraint: primary_key}
+  upc: VARCHAR {constraint: primary_key}
+  price: "DECIMAL(10,2)"
+  currency: VARCHAR
+  stock: INTEGER
+  rating: INTEGER
+  fetched_at: TIMESTAMP
+}
+
+fx_rates: {
+  shape: sql_table
+  rate_date: DATE {constraint: primary_key}
+  base: VARCHAR {constraint: primary_key}
+  quote: VARCHAR {constraint: primary_key}
+  rate: "DECIMAL(18,6)"
+  source: VARCHAR
+  fetched_at: TIMESTAMP
+}
+
+books: {
+  shape: sql_table
+  upc: VARCHAR {constraint: primary_key}
+  url: VARCHAR
+  title: VARCHAR
+  category: VARCHAR
+  price: "DECIMAL(10,2)"
+  currency: VARCHAR
+  stock: INTEGER
+  rating: INTEGER
+  num_reviews: INTEGER
+  description: VARCHAR
+  first_seen_run_id: VARCHAR
+  last_seen_run_id: VARCHAR
+  updated_at: TIMESTAMP
+}
+
+pipeline_runs: {
+  shape: sql_table
+  run_id: VARCHAR {constraint: primary_key}
+  step: VARCHAR {constraint: primary_key}
+  status: VARCHAR
+  started_at: TIMESTAMP
+  finished_at: TIMESTAMP
+  rows_in: INTEGER
+  rows_out: INTEGER
+  rows_rejected: INTEGER
+  detail: "VARCHAR (JSON)"
+}
+
+books_priced: "books_priced (view)" {
+  shape: sql_table
+  "books.*": "13 columns"
+  price_eur: "DECIMAL(18,2)"
+  price_usd: "DECIMAL(18,2)"
+  price_brl: "DECIMAL(18,2)"
+}
+
+book_snapshots.upc -> books.upc {class: meta}
+book_snapshots.run_id -> pipeline_runs.run_id {class: meta}
+books.upc -> books_priced."books.*" {class: meta}
+fx_rates.rate -> books_priced.price_eur {class: meta}

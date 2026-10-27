@@ -1,0 +1,89 @@
+# The system in context and its layers, from the site to the DuckDB serving layer, with the
+# contracts, checks and run metadata at each boundary. Architecture and data flow in one diagram:
+# the pipeline is one CLI with no services. Grounded in src/books_scraping/{cli,fetch,transform,
+# load,fx,runs,models}.py and the Dockerfile.
+...@_style
+
+title: "Architecture and data flow: books.toscrape.com to DuckDB" {
+  shape: text
+  near: top-center
+  style: {font-size: 24; bold: true}
+}
+
+direction: down
+
+operator: Operator {class: actor}
+site: "books.toscrape.com\nscraping sandbox" {class: external}
+frankfurter: "Frankfurter API\nECB rates, no key" {class: external}
+
+# Group labels stay one word: ELK routes edges through container labels (they enter from the
+# top), so the detail lives in the node labels.
+fetch: "fetch" {
+  class: group
+  crawl: "new run_id = UTC start;\nrobots.txt first, listing\npages, then products;\nexplicit User-Agent,\n0.5 s apart by default,\nretries on transport\nerrors, 429, 500, 502-504" {class: process}
+  gate: "before each page request:\nsame host, path stays\nin the run dir, robots.txt\nallows; a refused product\nis skipped and counted,\na refused listing ends paging" {class: check}
+}
+
+raw: "raw · data/raw/<run_id>/\npages/ (bytes as received)\nmanifest.jsonl: url, status,\nsha256, fetched_at (UTC)\nrun.json written last" {class: store}
+
+parse: "parse" {
+  class: group
+  transform: "offline, deterministic:\ndecode UTF-8, selectolax\nparsers, first row\nper UPC kept" {class: process}
+  contract: "contracts on raw:\nrun.json present,\nsha256 = manifest,\nBook model (pydantic)" {class: check}
+}
+
+processed: "processed" {
+  class: group
+  parquet: "data/processed/<run_id>/\nbooks.parquet: valid rows,\nrun.json (temp dir, renamed)" {class: store}
+  rejects: "rejects.jsonl\nurl, stage, error" {class: store}
+}
+
+load: "load" {
+  class: group
+  upsert: "one transaction: upsert\nbooks by UPC (a newer\nrun wins), snapshots per\nrun, drop stale ones" {class: process}
+  boundary: "boundary check:\nsnapshots of the run\n= Parquet rows,\nelse rollback" {class: check}
+}
+
+fx: "fx (optional, --fx)\ncurrencies in books,\nGET /latest per currency" {class: process}
+
+# No edge leaves this group, so its label sits at the bottom, clear of the incoming edges.
+wh: "serving · data/warehouse.duckdb" {
+  class: group
+  label.near: bottom-left
+  books: "books\ncurrent state per UPC" {class: store}
+  snapshots: "book_snapshots\nprice, stock per run" {class: store}
+  runs: "pipeline_runs\nfetch, parse, load, fx:\nstatus, UTC times,\nrows in, out, rejected" {class: store}
+  fx_rates: "fx_rates\nrate per date,\nbase and quote" {class: store}
+  priced: "books_priced (view)\nprices in EUR, USD,\nBRL at the latest rate" {class: serving}
+  books -> priced
+  fx_rates -> priced
+}
+
+operator -> fetch.crawl: "books-scraping run\n(uv, or the Docker\nimage, volume /data)" {class: meta}
+site -> fetch.crawl: "HTML pages"
+site -> fetch.gate {class: layer}
+fetch.crawl -> raw
+raw -> parse.transform
+raw -> parse.contract {class: layer}
+parse.transform -> processed.parquet
+parse.transform -> processed.rejects
+processed.parquet -> load.upsert
+processed.parquet -> load.boundary {class: layer}
+load.upsert -> wh.books
+load.upsert -> wh.snapshots
+load.upsert -> wh.runs {class: meta}
+frankfurter -> fx
+fx -> wh.fx_rates
+fx -> wh.runs {class: meta}
+
+legend: Legend {
+  class: legend
+  grid-columns: 4
+  actor: actor {class: [actor; legend-actor]}
+  external: external system {class: [external; legend-item]}
+  process: pipeline step {class: [process; legend-item]}
+  store: stored data or table {class: [store; legend-store]}
+  check: contract or check {class: [check; legend-item]}
+  serving: serving {class: [serving; legend-item]}
+  edges: "solid arrow: data\ndashed: control or\nrun metadata" {shape: text; style.font-size: 13}
+}
