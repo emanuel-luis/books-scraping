@@ -31,14 +31,9 @@ pages). The pipeline treats it like any other external source.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  site[books.toscrape.com] -->|fetch: robots.txt, rate limit, retries| raw[(raw<br/>HTML + manifest.jsonl)]
-  raw -->|parse: sha256 check, selectolax, pydantic| processed[(processed<br/>books.parquet + rejects.jsonl)]
-  processed -->|load: upsert by UPC| serving[(serving<br/>warehouse.duckdb)]
-  fxapi[Frankfurter API<br/>ECB rates] -->|fx, optional| serving
-  serving --> view[books_priced<br/>EUR / USD / BRL]
-```
+![Architecture and data flow: the operator runs the CLI, fetch crawls books.toscrape.com into the raw layer (pages, manifest, run.json), parse validates the pages into Parquet and rejects, load upserts them into DuckDB in one transaction with a boundary check, and the optional fx step adds Frankfurter rates for the books_priced view; contracts and checks sit beside each step.](docs/diagrams/data-flow.svg)
+
+Source: [data-flow.d2](docs/diagrams/data-flow.d2).
 
 | Layer | Location | Written by | Contents |
 | --- | --- | --- | --- |
@@ -94,6 +89,12 @@ A full crawl (no `--limit`) makes about 1,050 requests and takes around ten minu
 default rate of two requests per second. Steps exit with code 1 on failure, and logs go to
 stderr with UTC timestamps, the `run_id` and the step.
 
+What `run --fx` does, step by step on one `run_id`:
+
+![Sequence of books-scraping run --fx: the CLI creates the raw run directory, reads robots.txt, fetches listing and product pages into the raw layer and writes run.json last; parse checks each page and writes Parquet, rejects and run.json; load upserts DuckDB in one transaction with a boundary check and records pipeline_runs; fx reads the currencies, calls Frankfurter and upserts fx_rates.](docs/diagrams/user-flows-run.svg)
+
+Source: [user-flows-run.d2](docs/diagrams/user-flows-run.d2).
+
 ## Data contracts and quality checks
 
 | Boundary | Check | On failure |
@@ -121,6 +122,10 @@ optional `fx` step and the `books_priced` view, so the core pipeline needs no th
 
 Timestamps are `TIMESTAMP` columns holding UTC.
 
+![Data model of the DuckDB serving layer: books keyed by UPC, book_snapshots keyed by run_id and UPC, pipeline_runs keyed by run_id and step, fx_rates keyed by rate date, base and quote, and the books_priced view that adds prices in EUR, USD and BRL; the dashed arrows are logical joins, since only primary keys are declared.](docs/diagrams/data-model.svg)
+
+Source: [data-model.d2](docs/diagrams/data-model.d2).
+
 ## Configuration
 
 Every setting is optional and none is a secret. Copy `.env.example` to `.env` to override.
@@ -147,6 +152,17 @@ make test-network  # the one test that hits the live site
 make help          # every target
 ```
 
+The diagrams are [D2](https://d2lang.com/) sources in `docs/diagrams/`, rendered to the SVGs
+next to them with one pinned D2 version (CI fails when a committed SVG is stale). These targets
+need bash (Linux, macOS or WSL):
+
+```bash
+make d2-install                       # the pinned D2 (Linux x86_64), checksum verified
+make diagrams                         # render every docs/diagrams/*.d2 to SVG
+make diagrams-check                   # render, then fail if a committed SVG differs
+make diagrams-watch NAME=data-flow    # live preview in the browser while editing
+```
+
 ## Project structure
 
 ```
@@ -161,7 +177,7 @@ src/books_scraping/
   models.py     pydantic contracts
   runs.py       run ids, layer paths, step logger
 tests/          offline tests; fixtures/ holds saved pages from the site
-docs/           decisions log and refactor plan
+docs/           decisions log, refactor plan, diagrams/ (D2 sources and rendered SVGs)
 ```
 
 ## History
