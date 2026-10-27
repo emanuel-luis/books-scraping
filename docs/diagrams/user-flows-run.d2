@@ -1,0 +1,51 @@
+# Operator journey: `books-scraping run --fx` from the CLI, one step after the other on the same
+# run_id. Grounded in src/books_scraping/cli.py (run), fetch.py (crawl), transform.py,
+# load.py (load_run) and fx.py (load_fx).
+...@_style
+
+run: "books-scraping run: fetch, parse, load and fx on one run_id" {
+  shape: sequence_diagram
+  style: {font-size: 24; bold: true}
+
+  operator: Operator {class: actor}
+  cli: "CLI (Typer)" {class: process}
+  site: "books.toscrape.com" {class: external}
+  raw: "data/raw/\n<run_id>/" {class: store}
+  processed: "data/processed/\n<run_id>/" {class: store}
+  duckdb: "warehouse\n.duckdb" {class: store}
+  frankfurter: "Frankfurter\nAPI" {class: external}
+
+  operator -> cli: "run --limit 40\n--max-pages 2 --fx"
+
+  fetch: "fetch: run_id = UTC start time" {
+    cli -> raw: "create the run dir\n(refused if it exists)"
+    cli -> site: "GET /robots.txt\n(5xx: step fails)"
+    cli -> site: "GET listing pages,\nthen product pages;\nrefused product: skip,\nrefused listing: stop"
+    site -> cli: "HTML; retries on\ntransport errors,\n429, 500, 502-504" {class: meta}
+    cli -> raw: "pages/ as received,\na manifest line each"
+    cli -> raw: "run.json last: ok if\nany product page came"
+  }
+
+  parse: "parse: offline, deterministic" {
+    cli -> raw: "run.json must exist;\nread the manifest"
+    cli -> cli: "per page: sha256,\nparse, Book contract;\nrejects keep the stage"
+    cli -> processed: "books.parquet,\nrejects.jsonl, run.json\n(temp dir, rename)"
+  }
+
+  load: "load: one transaction" {
+    cli -> processed: "read run.json\nand books.parquet"
+    cli -> duckdb: "upsert books by UPC\n(a newer run wins),\nbook_snapshots; drop\nstale snapshots"
+    cli -> duckdb: "boundary check:\nsnapshots = Parquet\nrows, else rollback"
+    cli -> raw: "read run.json\n(the fetch row)"
+    cli -> duckdb: "pipeline_runs: fetch,\nparse, load; commit"
+  }
+
+  fx: "fx: only with --fx" {
+    cli -> duckdb: "distinct currencies\nin books (GBP)"
+    cli -> frankfurter: "GET /latest?base=GBP\n&symbols=EUR,USD,BRL"
+    frankfurter -> cli: "rates, parsed as Decimal" {class: meta}
+    cli -> duckdb: "upsert fx_rates;\npipeline_runs fx row"
+  }
+
+  cli -> operator: "prints the run_id;\nexit 1 if a step fails" {class: meta}
+}
